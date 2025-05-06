@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import 'screens/balance_screen.dart';
 
 void main() {
   runApp(const KashFinanceApp());
@@ -91,7 +91,25 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _loadData();
+    _transactions = [
+      Transaction(type: 'income', category: 'Salario', amount: 2500.0, date: '2025-05-01'),
+      Transaction(type: 'expense', category: 'Alquiler', amount: 800.0, date: '2025-05-02'),
+      Transaction(type: 'income', category: 'Freelance', amount: 1200.0, date: '2025-05-03'),
+      Transaction(type: 'expense', category: 'Comida', amount: 150.0, date: '2025-05-04'),
+      Transaction(type: 'expense', category: 'Transporte', amount: 80.0, date: '2025-05-05'),
+      Transaction(type: 'income', category: 'Bono', amount: 500.0, date: '2025-05-06'),
+      Transaction(type: 'expense', category: 'Entretenimiento', amount: 200.0, date: '2025-05-07'),
+      Transaction(type: 'income', category: 'Inversión', amount: 300.0, date: '2025-05-08'),
+      Transaction(type: 'expense', category: 'Ropa', amount: 120.0, date: '2025-05-09'),
+      Transaction(type: 'income', category: 'Regalo', amount: 100.0, date: '2025-05-10'),
+    ];
+    _totalIncome = _transactions
+        .where((t) => t.type == 'income')
+        .fold(0.0, (sum, t) => sum + t.amount);
+    _totalExpenses = _transactions
+        .where((t) => t.type == 'expense')
+        .fold(0.0, (sum, t) => sum + t.amount);
+    // _loadData(); // Temporarily disabled to use test data
   }
 
   Future<void> _loadData() async {
@@ -112,7 +130,7 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() {
         _monthIndex--;
         _selectedMonth = _months[_monthIndex];
-        _loadData();
+        // _loadData(); // Temporarily disabled to use test data
       });
     }
   }
@@ -122,7 +140,7 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() {
         _monthIndex++;
         _selectedMonth = _months[_monthIndex];
-        _loadData();
+        // _loadData(); // Temporarily disabled to use test data
       });
     }
   }
@@ -183,7 +201,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: const Text(
                       'Iniciar Sesión',
                       style: TextStyle(
-                        color: Color(0xFF0C2769), // Primary color
+                        color: Color(0xFF0C2769),
                         fontFamily: 'Roboto',
                         fontSize: 16,
                       ),
@@ -196,7 +214,7 @@ class _HomeScreenState extends State<HomeScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF0C2769), // Cyan blue
+                  color: const Color(0xFF0C2769),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
@@ -228,8 +246,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Card(
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         const Text(
                           'Balance Total',
@@ -240,7 +258,6 @@ class _HomeScreenState extends State<HomeScreen> {
                             color: Color(0xFF000000),
                           ),
                         ),
-                        const SizedBox(height: 8),
                         Text(
                           '\$${balance.toStringAsFixed(2)}',
                           style: const TextStyle(
@@ -255,8 +272,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
               ),
-
-
               const SizedBox(height: 16),
               // Summary (Income & Expenses)
               Card(
@@ -286,7 +301,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 style: TextStyle(
                                   fontFamily: 'Roboto',
                                   fontSize: 16,
-                                  color: Color(0xFF34A853), // Green
+                                  color: Color(0xFF34A853),
                                 ),
                               ),
                               Text(
@@ -308,7 +323,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 style: TextStyle(
                                   fontFamily: 'Roboto',
                                   fontSize: 16,
-                                  color: Color(0xFFD91B57), // Red
+                                  color: Color(0xFFD91B57),
                                 ),
                               ),
                               Text(
@@ -325,6 +340,34 @@ class _HomeScreenState extends State<HomeScreen> {
                         ],
                       ),
                     ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Center(
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => BalanceScreen(transactions: _transactions),
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF0C2769),
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Text(
+                    'Balance',
+                    style: TextStyle(
+                      fontFamily: 'Roboto',
+                      fontSize: 16,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ),
@@ -392,127 +435,98 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ],
                 ),
-              ],
-              // Transaction Lists (Shown only if transactions exist)
-              if (_transactions.isNotEmpty) ...[
-                const SizedBox(height: 24),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              ] else ...[
+                Column(
                   children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Detalles de Ingresos',
-                            style: TextStyle(
-                              fontFamily: 'Roboto',
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF000000),
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          _transactions.where((t) => t.type == 'income').isEmpty
-                              ? const Padding(
-                            padding: EdgeInsets.all(8.0),
-                            child: Text(
-                              'No hay ingresos',
-                              style: TextStyle(
-                                fontFamily: 'Roboto',
-                                color: Color(0xFFB3B4B7),
-                              ),
-                            ),
-                          )
-                              : ListView.builder(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            itemCount: _transactions.where((t) => t.type == 'income').length,
-                            itemBuilder: (context, index) {
-                              final transaction = _transactions.where((t) => t.type == 'income').toList()[index];
-                              return Card(
-                                child: ListTile(
-                                  leading: const Icon(
-                                    Icons.arrow_upward,
-                                    color: Color(0xFF34A853),
-                                    size: 20,
-                                  ),
-                                  title: Text(
-                                    transaction.category,
-                                    style: const TextStyle(fontFamily: 'Roboto'),
-                                  ),
-                                  subtitle: Text(
-                                    '\$${transaction.amount.toStringAsFixed(2)}',
-                                    style: const TextStyle(fontFamily: 'Roboto'),
-                                  ),
-                                  trailing: Text(
-                                    transaction.date,
-                                    style: const TextStyle(fontFamily: 'Roboto'),
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ],
+                    const Text(
+                      'Últimos 5 Movimientos',
+                      style: TextStyle(
+                        fontFamily: 'Roboto',
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF000000),
                       ),
                     ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Detalles de Egresos',
+                    const SizedBox(height: 8),
+                    ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: _transactions.length > 5 ? 5 : _transactions.length,
+                      itemBuilder: (context, index) {
+                        final transaction = _transactions.reversed.toList()[index];
+                        return Card(
+                          child: ListTile(
+                            leading: Icon(
+                              transaction.type == 'income' ? Icons.arrow_upward : Icons.arrow_downward,
+                              color: transaction.type == 'income' ? Color(0xFF34A853) : Color(0xFFD91B57),
+                              size: 20,
+                            ),
+                            title: Text(
+                              transaction.category,
+                              style: const TextStyle(fontFamily: 'Roboto'),
+                            ),
+                            subtitle: Text(
+                              '\$${transaction.amount.toStringAsFixed(2)}',
+                              style: const TextStyle(fontFamily: 'Roboto'),
+                            ),
+                            trailing: Text(
+                              transaction.date,
+                              style: const TextStyle(fontFamily: 'Roboto'),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        ElevatedButton(
+                          onPressed: () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Add income navigation placeholder')),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF34A853),
+                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: const Text(
+                            'Ingresos',
                             style: TextStyle(
                               fontFamily: 'Roboto',
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF000000),
+                              fontSize: 16,
+                              color: Colors.white,
                             ),
                           ),
-                          const SizedBox(height: 12),
-                          _transactions.where((t) => t.type == 'expense').isEmpty
-                              ? const Padding(
-                            padding: EdgeInsets.all(8.0),
-                            child: Text(
-                              'No hay egresos',
-                              style: TextStyle(
-                                fontFamily: 'Roboto',
-                                color: Color(0xFFB3B4B7),
-                              ),
+                        ),
+                        const SizedBox(width: 16),
+                        ElevatedButton(
+                          onPressed: () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Add expense navigation placeholder')),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFD91B57),
+                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
                             ),
-                          )
-                              : ListView.builder(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            itemCount: _transactions.where((t) => t.type == 'expense').length,
-                            itemBuilder: (context, index) {
-                              final transaction = _transactions.where((t) => t.type == 'expense').toList()[index];
-                              return Card(
-                                child: ListTile(
-                                  leading: const Icon(
-                                    Icons.arrow_downward,
-                                    color: Color(0xFFD91B57),
-                                    size: 20,
-                                  ),
-                                  title: Text(
-                                    transaction.category,
-                                    style: const TextStyle(fontFamily: 'Roboto'),
-                                  ),
-                                  subtitle: Text(
-                                    '\$${transaction.amount.toStringAsFixed(2)}',
-                                    style: const TextStyle(fontFamily: 'Roboto'),
-                                  ),
-                                  trailing: Text(
-                                    transaction.date,
-                                    style: const TextStyle(fontFamily: 'Roboto'),
-                                  ),
-                                ),
-                              );
-                            },
                           ),
-                        ],
-                      ),
+                          child: const Text(
+                            'Gastos',
+                            style: TextStyle(
+                              fontFamily: 'Roboto',
+                              fontSize: 16,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
