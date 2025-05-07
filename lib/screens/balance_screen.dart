@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../main.dart'; // Importa main.dart para acceder a la clase Transaction
+import '../../main.dart';
 
 class BalanceScreen extends StatefulWidget {
   final List<Transaction> transactions;

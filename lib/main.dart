@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'screens/balance_screen.dart';
+import 'screens/registro_movimiento_form.dart';
 
 void main() {
   runApp(const KashFinanceApp());
@@ -88,30 +89,6 @@ class _HomeScreenState extends State<HomeScreen> {
   final List<String> _months = ['2025-05', '2025-06', '2025-07'];
   final List<String> _monthLabels = ['Mayo 2025', 'Junio 2025', 'Julio 2025'];
 
-  @override
-  void initState() {
-    super.initState();
-    _transactions = [
-      Transaction(type: 'income', category: 'Salario', amount: 2500.0, date: '2025-05-01'),
-      Transaction(type: 'expense', category: 'Alquiler', amount: 800.0, date: '2025-05-02'),
-      Transaction(type: 'income', category: 'Freelance', amount: 1200.0, date: '2025-05-03'),
-      Transaction(type: 'expense', category: 'Comida', amount: 150.0, date: '2025-05-04'),
-      Transaction(type: 'expense', category: 'Transporte', amount: 80.0, date: '2025-05-05'),
-      Transaction(type: 'income', category: 'Bono', amount: 500.0, date: '2025-05-06'),
-      Transaction(type: 'expense', category: 'Entretenimiento', amount: 200.0, date: '2025-05-07'),
-      Transaction(type: 'income', category: 'Inversión', amount: 300.0, date: '2025-05-08'),
-      Transaction(type: 'expense', category: 'Ropa', amount: 120.0, date: '2025-05-09'),
-      Transaction(type: 'income', category: 'Regalo', amount: 100.0, date: '2025-05-10'),
-    ];
-    _totalIncome = _transactions
-        .where((t) => t.type == 'income')
-        .fold(0.0, (sum, t) => sum + t.amount);
-    _totalExpenses = _transactions
-        .where((t) => t.type == 'expense')
-        .fold(0.0, (sum, t) => sum + t.amount);
-    // _loadData(); // Temporarily disabled to use test data
-  }
-
   Future<void> _loadData() async {
     final username = await _dbHelper.getUsername();
     final totalIncome = await _dbHelper.getTotalIncome(_selectedMonth);
@@ -143,6 +120,17 @@ class _HomeScreenState extends State<HomeScreen> {
         // _loadData(); // Temporarily disabled to use test data
       });
     }
+  }
+
+  void _agregarTransaccion(Transaction nuevaTransaccion) {
+    setState(() {
+      _transactions.add(nuevaTransaccion);
+      if (nuevaTransaccion.type == 'income') {
+        _totalIncome += nuevaTransaccion.amount;
+      } else {
+        _totalExpenses += nuevaTransaccion.amount;
+      }
+    });
   }
 
   @override
@@ -390,8 +378,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     ElevatedButton(
                       onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Add income navigation placeholder')),
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => RegistroMovimientoForm(
+                              tipoMovimiento: 'income',
+                              onSave: _agregarTransaccion,
+                            ),
+                          ),
                         );
                       },
                       style: ElevatedButton.styleFrom(
@@ -413,8 +407,14 @@ class _HomeScreenState extends State<HomeScreen> {
                     const SizedBox(width: 16),
                     ElevatedButton(
                       onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Add expense navigation placeholder')),
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => RegistroMovimientoForm(
+                              tipoMovimiento: 'expense',
+                              onSave: _agregarTransaccion,
+                            ),
+                          ),
                         );
                       },
                       style: ElevatedButton.styleFrom(
@@ -435,7 +435,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ],
                 ),
-              ] else ...[
+              ]
+              else ...[
                 Column(
                   children: [
                     const Text(
@@ -483,8 +484,14 @@ class _HomeScreenState extends State<HomeScreen> {
                       children: [
                         ElevatedButton(
                           onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Add income navigation placeholder')),
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => RegistroMovimientoForm(
+                                  tipoMovimiento: 'income',
+                                  onSave: _agregarTransaccion,
+                                ),
+                              ),
                             );
                           },
                           style: ElevatedButton.styleFrom(
@@ -506,8 +513,14 @@ class _HomeScreenState extends State<HomeScreen> {
                         const SizedBox(width: 16),
                         ElevatedButton(
                           onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Add expense navigation placeholder')),
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => RegistroMovimientoForm(
+                                  tipoMovimiento: 'expense',
+                                  onSave: _agregarTransaccion,
+                                ),
+                              ),
                             );
                           },
                           style: ElevatedButton.styleFrom(
