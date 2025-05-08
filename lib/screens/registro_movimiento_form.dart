@@ -23,14 +23,25 @@ class _RegistroMovimientoFormState extends State<RegistroMovimientoForm> {
   DateTime? _fechaSeleccionada;
 
   // Lista de categorías para el Dropdown
-  List<String> _categorias = ['Comida', 'Transporte', 'Ocio', 'Salud', 'Otros'];
+  List<Map<String, dynamic>> _categoriasConIconos = [
+    {'nombre': 'Despensa', 'icono': Icons.shopping_cart},
+    {'nombre': 'Salario', 'icono': Icons.attach_money},
+    {'nombre': 'Alquiler', 'icono': Icons.home},
+    {'nombre': 'Facturas', 'icono': Icons.receipt},
+    {'nombre': 'Ocio', 'icono': Icons.movie},
+    {'nombre': 'Reparación', 'icono': Icons.build},
+    {'nombre': 'Transporte', 'icono': Icons.directions_car},
+    {'nombre': 'Educación', 'icono': Icons.school},
+    {'nombre': 'Otros', 'icono': Icons.more_horiz},
+  ];
 
   @override
   void initState() {
     super.initState();
     // Establecer la fecha actual como predeterminada
     _fechaSeleccionada = DateTime.now();
-    _fechaController.text = DateFormat('yyyy-MM-dd').format(_fechaSeleccionada!);
+    _fechaController.text =
+        DateFormat('yyyy-MM-dd').format(_fechaSeleccionada!);
   }
 
   @override
@@ -50,7 +61,9 @@ class _RegistroMovimientoFormState extends State<RegistroMovimientoForm> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          widget.tipoMovimiento == 'income' ? 'Agregar Ingreso' : 'Agregar Gasto',
+          widget.tipoMovimiento == 'income'
+              ? 'Agregar Ingreso'
+              : 'Agregar Gasto',
           style: const TextStyle(
             fontFamily: 'Roboto',
             fontSize: 20,
@@ -71,18 +84,21 @@ class _RegistroMovimientoFormState extends State<RegistroMovimientoForm> {
               decoration: InputDecoration(
                 labelText: 'Categoría',
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(25.0),
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16.0,
-                  vertical: 12.0,
-                ),
+                    borderRadius: BorderRadius.circular(25.0)),
+                contentPadding:
+                    EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
               ),
               value: _categoriaSeleccionada,
-              items: _categorias.map((String categoria) {
+              items: _categoriasConIconos.map((Map<String, dynamic> categoria) {
                 return DropdownMenuItem<String>(
-                  value: categoria,
-                  child: Text(categoria),
+                  value: categoria['nombre'],
+                  child: Row(
+                    children: <Widget>[
+                      Icon(categoria['icono']),
+                      SizedBox(width: 8.0),
+                      Text(categoria['nombre']),
+                    ],
+                  ),
                 );
               }).toList(),
               onChanged: (String? newValue) {
@@ -90,14 +106,20 @@ class _RegistroMovimientoFormState extends State<RegistroMovimientoForm> {
                   _categoriaSeleccionada = newValue;
                 });
               },
-              hint: const Text('Selecciona una opción'),
+              hint: Row(
+                children: <Widget>[
+                  SizedBox(width: 8.0),
+                  Text('Selecciona una opción'),
+                ],
+              ),
             ),
-            const SizedBox(height: 16.0),
+            SizedBox(height: 16.0),
 
             // Campo de Monto (TextField)
             TextFormField(
               controller: _montoController,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
               decoration: InputDecoration(
                 labelText: 'Monto',
                 border: OutlineInputBorder(
@@ -136,7 +158,8 @@ class _RegistroMovimientoFormState extends State<RegistroMovimientoForm> {
                     if (pickedDate != null) {
                       setState(() {
                         _fechaSeleccionada = pickedDate;
-                        _fechaController.text = DateFormat('yyyy-MM-dd').format(pickedDate);
+                        _fechaController.text =
+                            DateFormat('yyyy-MM-dd').format(pickedDate);
                       });
                     }
                   },
@@ -165,7 +188,9 @@ class _RegistroMovimientoFormState extends State<RegistroMovimientoForm> {
                         _montoController.text.isEmpty ||
                         _fechaController.text.isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Por favor completa todos los campos')),
+                        const SnackBar(
+                            content:
+                                Text('Por favor completa todos los campos')),
                       );
                       return;
                     }
@@ -173,7 +198,8 @@ class _RegistroMovimientoFormState extends State<RegistroMovimientoForm> {
                     final monto = double.tryParse(_montoController.text);
                     if (monto == null || monto <= 0) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Por favor ingresa un monto válido')),
+                        const SnackBar(
+                            content: Text('Por favor ingresa un monto válido')),
                       );
                       return;
                     }

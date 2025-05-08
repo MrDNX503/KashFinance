@@ -23,7 +23,8 @@ class KashFinanceApp extends StatelessWidget {
         scaffoldBackgroundColor: const Color(0xFFEDEDED),
         cardTheme: CardTheme(
           elevation: 4,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           color: const Color(0xFFFFFFFF), // White
         ),
         textTheme: const TextTheme(
@@ -66,9 +67,11 @@ class Transaction {
 // Placeholder DatabaseHelper (to be replaced by backend team)
 class DatabaseHelper {
   Future<String> getUsername() async => 'User';
-  Future<double> getTotalIncome(String month) async => 0.0; // Simulate no transactions
+  Future<double> getTotalIncome(String month) async =>
+      0.0; // Simulate no transactions
   Future<double> getTotalExpenses(String month) async => 0.0;
-  Future<List<Transaction>> getTransactions(String month) async => []; // Empty initially
+  Future<List<Transaction>> getTransactions(String month) async =>
+      []; // Empty initially
 }
 
 class HomeScreen extends StatefulWidget {
@@ -183,7 +186,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   TextButton(
                     onPressed: () {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Login navigation placeholder')),
+                        const SnackBar(
+                            content: Text('Login navigation placeholder')),
                       );
                     },
                     child: const Text(
@@ -200,7 +204,8 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(height: 20),
               // Month Selector
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
                   color: const Color(0xFF0C2769),
                   borderRadius: BorderRadius.circular(12),
@@ -222,7 +227,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                     IconButton(
-                      onPressed: _monthIndex < _months.length - 1 ? _nextMonth : null,
+                      onPressed:
+                          _monthIndex < _months.length - 1 ? _nextMonth : null,
                       icon: const Icon(Icons.arrow_right, color: Colors.white),
                     ),
                   ],
@@ -338,13 +344,15 @@ class _HomeScreenState extends State<HomeScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => BalanceScreen(transactions: _transactions),
+                        builder: (context) =>
+                            BalanceScreen(transactions: _transactions),
                       ),
                     );
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF0C2769),
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 24, vertical: 12),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
@@ -390,7 +398,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF34A853),
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 24, vertical: 12),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
@@ -419,7 +428,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFFD91B57),
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 24, vertical: 12),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
@@ -435,8 +445,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ],
                 ),
-              ]
-              else ...[
+              ] else ...[
                 Column(
                   children: [
                     const Text(
@@ -452,14 +461,20 @@ class _HomeScreenState extends State<HomeScreen> {
                     ListView.builder(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
-                      itemCount: _transactions.length > 5 ? 5 : _transactions.length,
+                      itemCount:
+                          _transactions.length > 5 ? 5 : _transactions.length,
                       itemBuilder: (context, index) {
-                        final transaction = _transactions.reversed.toList()[index];
+                        final transaction =
+                            _transactions.reversed.toList()[index];
                         return Card(
                           child: ListTile(
                             leading: Icon(
-                              transaction.type == 'income' ? Icons.arrow_upward : Icons.arrow_downward,
-                              color: transaction.type == 'income' ? Color(0xFF34A853) : Color(0xFFD91B57),
+                              transaction.type == 'income'
+                                  ? Icons.arrow_upward
+                                  : Icons.arrow_downward,
+                              color: transaction.type == 'income'
+                                  ? Color(0xFF34A853)
+                                  : Color(0xFFD91B57),
                               size: 20,
                             ),
                             title: Text(
@@ -496,7 +511,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF34A853),
-                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 24, vertical: 12),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8),
                             ),
@@ -525,7 +541,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFFD91B57),
-                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 24, vertical: 12),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8),
                             ),
