@@ -1,122 +1,570 @@
 import 'package:flutter/material.dart';
+import 'screens/balance_screen.dart';
+import 'screens/registro_movimiento_form.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(const KashFinanceApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class KashFinanceApp extends StatelessWidget {
+  const KashFinanceApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'KashFinance',
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        primaryColor: const Color(0xFF0C2769), // Dark blue
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF0C2769),
+          secondary: const Color(0xFFD91B57), // Red
+          background: const Color(0xFFEDEDED), // Light gray
+        ),
+        scaffoldBackgroundColor: const Color(0xFFEDEDED),
+        cardTheme: CardTheme(
+          elevation: 4,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          color: const Color(0xFFFFFFFF), // White
+        ),
+        textTheme: const TextTheme(
+          headlineSmall: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF000000), // Black
+            fontFamily: 'Roboto',
+          ),
+          bodyMedium: TextStyle(
+            fontSize: 16,
+            color: Color(0xFFB3B4B7), // Gray
+            fontFamily: 'Roboto',
+          ),
+        ),
+        fontFamily: 'Roboto',
+        useMaterial3: true,
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const HomeScreen(),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
+class Transaction {
+  final int? id;
+  final String type; // 'income' or 'expense'
+  final String category;
+  final double amount;
+  final String date;
 
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
-
-  @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  Transaction({
+    this.id,
+    required this.type,
+    required this.category,
+    required this.amount,
+    required this.date,
+  });
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+// Placeholder DatabaseHelper (to be replaced by backend team)
+class DatabaseHelper {
+  Future<String> getUsername() async => 'User';
+  Future<double> getTotalIncome(String month) async =>
+      0.0; // Simulate no transactions
+  Future<double> getTotalExpenses(String month) async => 0.0;
+  Future<List<Transaction>> getTransactions(String month) async =>
+      []; // Empty initially
+}
 
-  void _incrementCounter() {
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
+
+  @override
+  _HomeScreenState createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  final DatabaseHelper _dbHelper = DatabaseHelper();
+  String _username = 'User';
+  double _totalIncome = 0.0;
+  double _totalExpenses = 0.0;
+  List<Transaction> _transactions = [];
+  String _selectedMonth = '2025-05';
+  int _monthIndex = 0;
+  final List<String> _months = ['2025-05', '2025-06', '2025-07'];
+  final List<String> _monthLabels = ['Mayo 2025', 'Junio 2025', 'Julio 2025'];
+
+  Future<void> _loadData() async {
+    final username = await _dbHelper.getUsername();
+    final totalIncome = await _dbHelper.getTotalIncome(_selectedMonth);
+    final totalExpenses = await _dbHelper.getTotalExpenses(_selectedMonth);
+    final transactions = await _dbHelper.getTransactions(_selectedMonth);
     setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
+      _username = username;
+      _totalIncome = totalIncome;
+      _totalExpenses = totalExpenses;
+      _transactions = transactions;
+    });
+  }
+
+  void _previousMonth() {
+    if (_monthIndex > 0) {
+      setState(() {
+        _monthIndex--;
+        _selectedMonth = _months[_monthIndex];
+        // _loadData(); // Temporarily disabled to use test data
+      });
+    }
+  }
+
+  void _nextMonth() {
+    if (_monthIndex < _months.length - 1) {
+      setState(() {
+        _monthIndex++;
+        _selectedMonth = _months[_monthIndex];
+        // _loadData(); // Temporarily disabled to use test data
+      });
+    }
+  }
+
+  void _agregarTransaccion(Transaction nuevaTransaccion) {
+    setState(() {
+      _transactions.add(nuevaTransaccion);
+      if (nuevaTransaccion.type == 'income') {
+        _totalIncome += nuevaTransaccion.amount;
+      } else {
+        _totalExpenses += nuevaTransaccion.amount;
+      }
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
+    final double balance = _totalIncome - _totalExpenses;
+
     return Scaffold(
       appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
+        title: RichText(
+          text: const TextSpan(
+            children: [
+              TextSpan(
+                text: 'Kash',
+                style: TextStyle(
+                  fontFamily: 'Roboto',
+                  fontWeight: FontWeight.bold,
+                  fontSize: 20,
+                  color: Colors.white,
+                ),
+              ),
+              TextSpan(
+                text: 'Finance',
+                style: TextStyle(
+                  fontFamily: 'Roboto',
+                  fontSize: 20,
+                  color: Colors.white,
+                ),
+              ),
+            ],
+          ),
+        ),
+        backgroundColor: Theme.of(context).primaryColor,
+        elevation: 0,
+        centerTitle: true,
       ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text('You have pushed the button this many times:'),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-          ],
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Greeting and Login Button
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Hola, $_username',
+                    style: Theme.of(context).textTheme.headlineSmall,
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                            content: Text('Login navigation placeholder')),
+                      );
+                    },
+                    child: const Text(
+                      'Iniciar Sesión',
+                      style: TextStyle(
+                        color: Color(0xFF0C2769),
+                        fontFamily: 'Roboto',
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              // Month Selector
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0C2769),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    IconButton(
+                      onPressed: _monthIndex > 0 ? _previousMonth : null,
+                      icon: const Icon(Icons.arrow_left, color: Colors.white),
+                    ),
+                    Text(
+                      _monthLabels[_monthIndex],
+                      style: const TextStyle(
+                        fontFamily: 'Roboto',
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    IconButton(
+                      onPressed:
+                          _monthIndex < _months.length - 1 ? _nextMonth : null,
+                      icon: const Icon(Icons.arrow_right, color: Colors.white),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              // Balance Total
+              Center(
+                child: Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Balance Total',
+                          style: TextStyle(
+                            fontFamily: 'Roboto',
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF000000),
+                          ),
+                        ),
+                        Text(
+                          '\$${balance.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            fontFamily: 'Roboto',
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF0C2769),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              // Summary (Income & Expenses)
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Resumen',
+                        style: TextStyle(
+                          fontFamily: 'Roboto',
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF000000),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Ingresos',
+                                style: TextStyle(
+                                  fontFamily: 'Roboto',
+                                  fontSize: 16,
+                                  color: Color(0xFF34A853),
+                                ),
+                              ),
+                              Text(
+                                '\$${_totalIncome.toStringAsFixed(2)}',
+                                style: const TextStyle(
+                                  fontFamily: 'Roboto',
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF34A853),
+                                ),
+                              ),
+                            ],
+                          ),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Gastos',
+                                style: TextStyle(
+                                  fontFamily: 'Roboto',
+                                  fontSize: 16,
+                                  color: Color(0xFFD91B57),
+                                ),
+                              ),
+                              Text(
+                                '\$${_totalExpenses.toStringAsFixed(2)}',
+                                style: const TextStyle(
+                                  fontFamily: 'Roboto',
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFFD91B57),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Center(
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            BalanceScreen(transactions: _transactions),
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF0C2769),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 24, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Text(
+                    'Balance',
+                    style: TextStyle(
+                      fontFamily: 'Roboto',
+                      fontSize: 16,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              if (_transactions.isEmpty) ...[
+                const Center(
+                  child: Text(
+                    'Aún no has realizado movimientos en este mes, Empieza ahora!',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontFamily: 'Roboto',
+                      fontSize: 16,
+                      color: Color(0xFFB3B4B7),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => RegistroMovimientoForm(
+                              tipoMovimiento: 'income',
+                              onSave: _agregarTransaccion,
+                            ),
+                          ),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF34A853),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 24, vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: const Text(
+                        'Ingresos',
+                        style: TextStyle(
+                          fontFamily: 'Roboto',
+                          fontSize: 16,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => RegistroMovimientoForm(
+                              tipoMovimiento: 'expense',
+                              onSave: _agregarTransaccion,
+                            ),
+                          ),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFD91B57),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 24, vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: const Text(
+                        'Gastos',
+                        style: TextStyle(
+                          fontFamily: 'Roboto',
+                          fontSize: 16,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ] else ...[
+                Column(
+                  children: [
+                    const Text(
+                      'Últimos 5 Movimientos',
+                      style: TextStyle(
+                        fontFamily: 'Roboto',
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF000000),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount:
+                          _transactions.length > 5 ? 5 : _transactions.length,
+                      itemBuilder: (context, index) {
+                        final transaction =
+                            _transactions.reversed.toList()[index];
+                        return Card(
+                          child: ListTile(
+                            leading: Icon(
+                              transaction.type == 'income'
+                                  ? Icons.arrow_upward
+                                  : Icons.arrow_downward,
+                              color: transaction.type == 'income'
+                                  ? Color(0xFF34A853)
+                                  : Color(0xFFD91B57),
+                              size: 20,
+                            ),
+                            title: Text(
+                              transaction.category,
+                              style: const TextStyle(fontFamily: 'Roboto'),
+                            ),
+                            subtitle: Text(
+                              '\$${transaction.amount.toStringAsFixed(2)}',
+                              style: const TextStyle(fontFamily: 'Roboto'),
+                            ),
+                            trailing: Text(
+                              transaction.date,
+                              style: const TextStyle(fontFamily: 'Roboto'),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        ElevatedButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => RegistroMovimientoForm(
+                                  tipoMovimiento: 'income',
+                                  onSave: _agregarTransaccion,
+                                ),
+                              ),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF34A853),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 24, vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: const Text(
+                            'Ingresos',
+                            style: TextStyle(
+                              fontFamily: 'Roboto',
+                              fontSize: 16,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        ElevatedButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => RegistroMovimientoForm(
+                                  tipoMovimiento: 'expense',
+                                  onSave: _agregarTransaccion,
+                                ),
+                              ),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFD91B57),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 24, vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: const Text(
+                            'Gastos',
+                            style: TextStyle(
+                              fontFamily: 'Roboto',
+                              fontSize: 16,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ],
+            ],
+          ),
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
     );
   }
 }
