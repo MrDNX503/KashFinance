@@ -23,8 +23,7 @@ class KashFinanceApp extends StatelessWidget {
         scaffoldBackgroundColor: const Color(0xFFEDEDED),
         cardTheme: CardTheme(
           elevation: 4,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           color: const Color(0xFFFFFFFF), // White
         ),
         textTheme: const TextTheme(
@@ -67,11 +66,9 @@ class Transaction {
 // Placeholder DatabaseHelper (to be replaced by backend team)
 class DatabaseHelper {
   Future<String> getUsername() async => 'User';
-  Future<double> getTotalIncome(String month) async =>
-      0.0; // Simulate no transactions
+  Future<double> getTotalIncome(String month) async => 0.0; // Simulate no transactions
   Future<double> getTotalExpenses(String month) async => 0.0;
-  Future<List<Transaction>> getTransactions(String month) async =>
-      []; // Empty initially
+  Future<List<Transaction>> getTransactions(String month) async => []; // Empty initially
 }
 
 class HomeScreen extends StatefulWidget {
@@ -91,6 +88,15 @@ class _HomeScreenState extends State<HomeScreen> {
   int _monthIndex = 0;
   final List<String> _months = ['2025-05', '2025-06', '2025-07'];
   final List<String> _monthLabels = ['Mayo 2025', 'Junio 2025', 'Julio 2025'];
+
+  @override
+  void initState() {
+    super.initState();
+    _transactions = [];
+    _totalIncome = 0.0;
+    _totalExpenses = 0.0;
+    // _loadData(); // Temporarily disabled to use test data
+  }
 
   Future<void> _loadData() async {
     final username = await _dbHelper.getUsername();
@@ -136,6 +142,17 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  void _eliminarTransaccion(Transaction transaccion) {
+    setState(() {
+      _transactions.remove(transaccion);
+      if (transaccion.type == 'income') {
+        _totalIncome -= transaccion.amount;
+      } else {
+        _totalExpenses -= transaccion.amount;
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final double balance = _totalIncome - _totalExpenses;
@@ -175,37 +192,15 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Greeting and Login Button
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Hola, $_username',
-                    style: Theme.of(context).textTheme.headlineSmall,
-                  ),
-                  TextButton(
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                            content: Text('Login navigation placeholder')),
-                      );
-                    },
-                    child: const Text(
-                      'Iniciar Sesión',
-                      style: TextStyle(
-                        color: Color(0xFF0C2769),
-                        fontFamily: 'Roboto',
-                        fontSize: 16,
-                      ),
-                    ),
-                  ),
-                ],
+              // Greeting
+              Text(
+                'Hola, $_username',
+                style: Theme.of(context).textTheme.headlineSmall,
               ),
               const SizedBox(height: 20),
               // Month Selector
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
                   color: const Color(0xFF0C2769),
                   borderRadius: BorderRadius.circular(12),
@@ -227,8 +222,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                     IconButton(
-                      onPressed:
-                          _monthIndex < _months.length - 1 ? _nextMonth : null,
+                      onPressed: _monthIndex < _months.length - 1 ? _nextMonth : null,
                       icon: const Icon(Icons.arrow_right, color: Colors.white),
                     ),
                   ],
@@ -344,15 +338,16 @@ class _HomeScreenState extends State<HomeScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) =>
-                            BalanceScreen(transactions: _transactions),
+                        builder: (context) => BalanceScreen(
+                          transactions: _transactions,
+                          onDelete: _eliminarTransaccion,
+                        ),
                       ),
                     );
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF0C2769),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 24, vertical: 12),
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
@@ -398,8 +393,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF34A853),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 24, vertical: 12),
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
@@ -428,8 +422,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFFD91B57),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 24, vertical: 12),
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
@@ -461,20 +454,14 @@ class _HomeScreenState extends State<HomeScreen> {
                     ListView.builder(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
-                      itemCount:
-                          _transactions.length > 5 ? 5 : _transactions.length,
+                      itemCount: _transactions.length > 5 ? 5 : _transactions.length,
                       itemBuilder: (context, index) {
-                        final transaction =
-                            _transactions.reversed.toList()[index];
+                        final transaction = _transactions.reversed.toList()[index];
                         return Card(
                           child: ListTile(
                             leading: Icon(
-                              transaction.type == 'income'
-                                  ? Icons.arrow_upward
-                                  : Icons.arrow_downward,
-                              color: transaction.type == 'income'
-                                  ? Color(0xFF34A853)
-                                  : Color(0xFFD91B57),
+                              transaction.type == 'income' ? Icons.arrow_upward : Icons.arrow_downward,
+                              color: transaction.type == 'income' ? Color(0xFF34A853) : Color(0xFFD91B57),
                               size: 20,
                             ),
                             title: Text(
@@ -511,8 +498,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF34A853),
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 24, vertical: 12),
+                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8),
                             ),
@@ -541,8 +527,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFFD91B57),
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 24, vertical: 12),
+                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8),
                             ),
