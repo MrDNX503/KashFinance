@@ -4,7 +4,8 @@ import '../main.dart'; // Para acceder a la clase Transaction
 
 class RegistroMovimientoForm extends StatefulWidget {
   final String tipoMovimiento; // 'income' o 'expense'
-  final Function(Transaction) onSave; // Callback para agregar el movimiento
+  final void Function(String category, double amount, DateTime date) onSave;
+  // Callback para agregar el movimiento
 
   const RegistroMovimientoForm({
     super.key,
@@ -18,30 +19,30 @@ class RegistroMovimientoForm extends StatefulWidget {
 
 class _RegistroMovimientoFormState extends State<RegistroMovimientoForm> {
   String? _categoriaSeleccionada;
-  TextEditingController _montoController = TextEditingController();
-  TextEditingController _fechaController = TextEditingController();
-  DateTime? _fechaSeleccionada;
+  final TextEditingController _montoController = TextEditingController();
+  final TextEditingController _fechaController = TextEditingController();
+  DateTime _fechaSeleccionada = DateTime.now();
 
   // Lista de categorías para el Dropdown
-  List<Map<String, dynamic>> _categoriasConIconos = [
-    {'nombre': 'Despensa', 'icono': Icons.shopping_cart},
-    {'nombre': 'Salario', 'icono': Icons.attach_money},
-    {'nombre': 'Alquiler', 'icono': Icons.home},
-    {'nombre': 'Facturas', 'icono': Icons.receipt},
-    {'nombre': 'Ocio', 'icono': Icons.movie},
-    {'nombre': 'Reparación', 'icono': Icons.build},
-    {'nombre': 'Transporte', 'icono': Icons.directions_car},
-    {'nombre': 'Educación', 'icono': Icons.school},
-    {'nombre': 'Otros', 'icono': Icons.more_horiz},
+  static const _incomeCategories = [
+    {'nombre': 'Salario',     'icono': Icons.attach_money},
+    {'nombre': 'Otros',       'icono': Icons.more_horiz},
+  ];
+  static const _expenseCategories = [
+    {'nombre': 'Despensa',    'icono': Icons.shopping_cart},
+    {'nombre': 'Alquiler',    'icono': Icons.home},
+    {'nombre': 'Facturas',    'icono': Icons.receipt},
+    {'nombre': 'Ocio',        'icono': Icons.movie},
+    {'nombre': 'Reparación',  'icono': Icons.build},
+    {'nombre': 'Transporte',  'icono': Icons.directions_car},
+    {'nombre': 'Educación',   'icono': Icons.school},
+    {'nombre': 'Otros',       'icono': Icons.more_horiz},
   ];
 
   @override
   void initState() {
     super.initState();
-    // Establecer la fecha actual como predeterminada
-    _fechaSeleccionada = DateTime.now();
-    _fechaController.text =
-        DateFormat('yyyy-MM-dd').format(_fechaSeleccionada!);
+    _fechaController.text = DateFormat('yyyy-MM-dd').format(_fechaSeleccionada);
   }
 
   @override
@@ -53,22 +54,20 @@ class _RegistroMovimientoFormState extends State<RegistroMovimientoForm> {
 
   @override
   Widget build(BuildContext context) {
-    // Determinar colores según el tipo de movimiento
-    final Color colorPrincipal = widget.tipoMovimiento == 'income'
-        ? const Color(0xFF34A853) // Verde para ingresos
-        : const Color(0xFFD91B57); // Rojo para gastos
+    final isIncome = widget.tipoMovimiento == 'income';
+    final colorPrincipal = isIncome
+        ? const Color(0xFF34A853)
+        : const Color(0xFFD91B57);
+
+    final categorias = isIncome
+        ? _incomeCategories
+        : _expenseCategories;
 
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          widget.tipoMovimiento == 'income'
-              ? 'Agregar Ingreso'
-              : 'Agregar Gasto',
-          style: const TextStyle(
-            fontFamily: 'Roboto',
-            fontSize: 20,
-            color: Colors.white,
-          ),
+          isIncome ? 'Agregar Ingreso' : 'Agregar Gasto',
+          style: const TextStyle(fontFamily: 'Roboto', fontSize: 20, color: Colors.white,),
         ),
         backgroundColor: colorPrincipal,
         elevation: 0,
@@ -89,30 +88,21 @@ class _RegistroMovimientoFormState extends State<RegistroMovimientoForm> {
                     EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
               ),
               value: _categoriaSeleccionada,
-              items: _categoriasConIconos.map((Map<String, dynamic> categoria) {
+              items: categorias.map((c) {
                 return DropdownMenuItem<String>(
-                  value: categoria['nombre'],
+                  value: c['nombre'] as String,
                   child: Row(
                     children: <Widget>[
-                      Icon(categoria['icono']),
+                      Icon(c['icono'] as IconData),
                       SizedBox(width: 8.0),
-                      Text(categoria['nombre']),
+                      Text(c['nombre'] as String),
                     ],
                   ),
                 );
               }).toList(),
-              onChanged: (String? newValue) {
-                setState(() {
-                  _categoriaSeleccionada = newValue;
-                });
-              },
-              hint: Row(
-                children: <Widget>[
-                  SizedBox(width: 8.0),
-                  Text('Selecciona una opción'),
-                ],
+              onChanged: (v) => setState(() => _categoriaSeleccionada = v),
+              hint: const Text('Selecciona una categoría'),
               ),
-            ),
             SizedBox(height: 16.0),
 
             // Campo de Monto (TextField)
@@ -149,17 +139,17 @@ class _RegistroMovimientoFormState extends State<RegistroMovimientoForm> {
                 suffixIcon: IconButton(
                   icon: const Icon(Icons.calendar_today),
                   onPressed: () async {
-                    DateTime? pickedDate = await showDatePicker(
+                    final picked = await showDatePicker(
                       context: context,
-                      initialDate: _fechaSeleccionada ?? DateTime.now(),
+                      initialDate: _fechaSeleccionada,
                       firstDate: DateTime(2000),
                       lastDate: DateTime(2101),
                     );
-                    if (pickedDate != null) {
+                    if (picked != null) {
                       setState(() {
-                        _fechaSeleccionada = pickedDate;
+                        _fechaSeleccionada = picked;
                         _fechaController.text =
-                            DateFormat('yyyy-MM-dd').format(pickedDate);
+                            DateFormat('yyyy-MM-dd').format(picked);
                       });
                     }
                   },
@@ -185,8 +175,7 @@ class _RegistroMovimientoFormState extends State<RegistroMovimientoForm> {
                   ),
                   onPressed: () {
                     if (_categoriaSeleccionada == null ||
-                        _montoController.text.isEmpty ||
-                        _fechaController.text.isEmpty) {
+                        _montoController.text.isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                             content:
@@ -203,44 +192,30 @@ class _RegistroMovimientoFormState extends State<RegistroMovimientoForm> {
                       );
                       return;
                     }
+                    //Seleccionar fecha
+                    //final fechaString = DateFormat('yyyy-MM-dd').format(_fechaSeleccionada);
 
-                    // Crear nueva transacción
-                    final nuevaTransaccion = Transaction(
-                      type: widget.tipoMovimiento,
-                      category: _categoriaSeleccionada!,
-                      amount: monto,
-                      date: _fechaController.text,
+                    // Llamada al callback con category, amount y date
+                    widget.onSave(
+                      _categoriaSeleccionada!,
+                      monto,
+                      _fechaSeleccionada,
                     );
-
-                    // Llamar al callback para agregar la transacción
-                    widget.onSave(nuevaTransaccion);
-
-                    // Regresar a la pantalla anterior
                     Navigator.pop(context);
                   },
-                  child: const Text(
-                    'Guardar',
-                    style: TextStyle(color: Colors.white),
+                  child: const Text('Guardar', style: TextStyle(color: Colors.white,),
                   ),
                 ),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.grey[400],
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(25.0),
-                    ),
+                        borderRadius: BorderRadius.circular(25)),
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 40.0,
-                      vertical: 12.0,
-                    ),
+                        horizontal: 40, vertical: 12),
                   ),
-                  onPressed: () {
-                    // Cancelar y regresar
-                    Navigator.pop(context);
-                  },
-                  child: const Text(
-                    'Cancelar',
-                    style: TextStyle(color: Colors.white),
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancelar', style: TextStyle(color: Colors.white,),
                   ),
                 ),
               ],

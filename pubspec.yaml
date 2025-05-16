@@ -12,7 +12,13 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  sqflite: ^2.0.0+4
+  path_provider: ^2.0.0
+  path: ^1.8.0
   flutter_lints: ^5.0.0
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/google_logo.png
+    - assets/apple_logo.png

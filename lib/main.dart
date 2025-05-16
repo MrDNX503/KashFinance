@@ -1,137 +1,476 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:path/path.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:sqflite/sqflite.dart';
+import 'package:intl/intl.dart';
+
 import 'screens/balance_screen.dart';
 import 'screens/registro_movimiento_form.dart';
+import 'screens/auth_screen.dart';
 
 void main() {
   runApp(const KashFinanceApp());
 }
 
-class KashFinanceApp extends StatelessWidget {
-  const KashFinanceApp({super.key});
+// =======================
+// MODELOS
+// =======================
 
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'KashFinance',
-      theme: ThemeData(
-        primaryColor: const Color(0xFF0C2769), // Dark blue
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF0C2769),
-          secondary: const Color(0xFFD91B57), // Red
-          background: const Color(0xFFEDEDED), // Light gray
-        ),
-        scaffoldBackgroundColor: const Color(0xFFEDEDED),
-        cardTheme: CardTheme(
-          elevation: 4,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          color: const Color(0xFFFFFFFF), // White
-        ),
-        textTheme: const TextTheme(
-          headlineSmall: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF000000), // Black
-            fontFamily: 'Roboto',
-          ),
-          bodyMedium: TextStyle(
-            fontSize: 16,
-            color: Color(0xFFB3B4B7), // Gray
-            fontFamily: 'Roboto',
-          ),
-        ),
-        fontFamily: 'Roboto',
-        useMaterial3: true,
-      ),
-      home: const HomeScreen(),
-    );
-  }
+class User {
+  final int? id;
+  final String email;
+  final String password;
+  final String name;
+  final String surname;
+
+  User({this.id, required this.email, required this.password, required this.name, required this.surname});
+
+  Map<String, dynamic> toMap() => {
+    'id': id,
+    'name': name,
+    'surname': surname,
+    'email': email,
+    'password': password,
+  };
+
+  factory User.fromMap(Map<String, dynamic> m) => User(
+    id: m['id'] as int?,
+    email: m['email'] as String,
+    password: m['password'] as String,
+    name: m['name'] as String,
+    surname: m['surname'] as String,
+  );
 }
 
-class Transaction {
+class TransactionModel {
   final int? id;
-  final String type; // 'income' or 'expense'
+  final String type;
   final String category;
   final double amount;
-  final String date;
+  final DateTime date;
 
-  Transaction({
+  TransactionModel({
     this.id,
     required this.type,
     required this.category,
     required this.amount,
     required this.date,
   });
+
+  Map<String, dynamic> toMap() => {
+    'id': id,
+    'type': type,
+    'category': category,
+    'amount': amount,
+    'date'    : date.toIso8601String(),
+  };
+
+  factory TransactionModel.fromMap(Map<String, dynamic> m) =>
+      TransactionModel(
+        id: m['id'] as int?,
+        type: m['type'] as String,
+        category: m['category'] as String,
+        amount: (m['amount'] as num).toDouble(),
+        date: DateTime.parse(m['date'] as String),
+      );
 }
 
-// Placeholder DatabaseHelper (to be replaced by backend team)
-class DatabaseHelper {
-  Future<String> getUsername() async => 'User';
-  Future<double> getTotalIncome(String month) async =>
-      0.0; // Simulate no transactions
-  Future<double> getTotalExpenses(String month) async => 0.0;
-  Future<List<Transaction>> getTransactions(String month) async =>
-      []; // Empty initially
+// =======================
+// DBHelper (SQLite)
+// =======================
+
+class DBHelper {
+  static final DBHelper _instance = DBHelper._();
+  static Database? _db;
+  DBHelper._();
+  factory DBHelper() => _instance;
+
+  Future<Database> get database async {
+    if (_db != null) return _db!;
+
+    Directory dir = await getApplicationDocumentsDirectory();
+    String path = join(dir.path, 'kashfinance.db');
+    _db = await openDatabase(
+      path,
+      version: 2,                // <-- Bump a la versión 2
+      onCreate: _onCreate,
+      onUpgrade: _onUpgrade,     // <-- Definimos onUpgrade
+    );
+    return _db!;
+  }
+
+  Future _onCreate(Database db, int v) async {
+    await db.execute('''
+      CREATE TABLE users(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL DEFAULT '',
+        surname TEXT NOT NULL DEFAULT '',
+        email TEXT NOT NULL UNIQUE,
+        password TEXT NOT NULL
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE transactions(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        type TEXT NOT NULL,
+        category TEXT NOT NULL,
+        amount REAL NOT NULL,
+        date TEXT NOT NULL
+      )
+    ''');
+  }
+
+  Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await db.execute("ALTER TABLE users ADD COLUMN name TEXT NOT NULL DEFAULT ''");
+      await db.execute("ALTER TABLE users ADD COLUMN surname TEXT NOT NULL DEFAULT ''");
+    }
+  }
+
+  // Usuario
+  Future<void> insertUser(User user) async {
+    final db = await database;
+    await db.insert(
+      'users',
+      {
+        'name': user.name,
+        'surname': user.surname,
+        'email': user.email,
+        'password': user.password,
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  Future<User?> getUserByEmail(String email) async {
+    final db = await database;
+    final res = await db.query(
+      'users',
+      where: 'email = ?',
+      whereArgs: [email],
+      limit: 1,
+    );
+    if (res.isNotEmpty) {
+      return User.fromMap(res.first);
+    }
+    return null;
+  }
+
+  // Transacciones
+  Future<int> insertTransaction(TransactionModel t) async {
+    final db = await database;
+    return db.insert('transactions', t.toMap());
+  }
+
+  Future<List<TransactionModel>> getTransactionsByMonth(
+      String month) async {
+    final db = await database;
+    final maps = await db.query('transactions',
+        where: "substr(date,1,7)=?", whereArgs: [month], orderBy: 'date DESC');
+    return maps.map((m) => TransactionModel.fromMap(m)).toList();
+  }
 }
+
+// =======================
+// APP PRINCIPAL
+// =======================
+
+class KashFinanceApp extends StatelessWidget {
+  const KashFinanceApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final db = DBHelper();
+
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Builder(builder: (ctx) {
+        return AuthTabbedScreen(
+          onRegister: (name, surname, email, password) async {
+            final exists = await db.getUserByEmail(email);
+            if (exists != null) throw 'El correo ya está registrado';
+
+            await db.insertUser(User(
+              name: name,
+              surname: surname,
+              email: email,
+              password: password,
+            ));
+
+            final newUser = await db.getUserByEmail(email);
+            if (newUser == null) throw 'Error al registrar el usuario';
+
+            Navigator.pushReplacement(
+              ctx,
+              MaterialPageRoute(builder: (_) => HomeScreen(user: newUser)),
+            );
+          },
+          onLogin: (email, password) async {
+            final user = await db.getUserByEmail(email);
+            if (user == null || user.password != password) {
+              throw 'Credenciales incorrectas';
+            }
+
+            Navigator.pushReplacement(
+              ctx,
+              MaterialPageRoute(builder: (_) => HomeScreen(user: user)),
+            );
+          },
+        );
+      }),
+    );
+  }
+}
+
+
+// =======================
+// PANTALLA DE AUTENTICACIÓN
+// =======================
+
+class AuthScreen extends StatefulWidget {
+  const AuthScreen({super.key});
+  @override
+  State<AuthScreen> createState() => _AuthScreenState();
+}
+
+class _AuthScreenState extends State<AuthScreen> {
+  final _nameCtrl    = TextEditingController();
+  final _surnameCtrl = TextEditingController();
+  final _emailCtrl = TextEditingController();
+  final _passCtrl = TextEditingController();
+  bool _isLogin = true;
+  String? _error;
+  final DBHelper _db = DBHelper();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF0C2769),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  TextButton(
+                    onPressed: () => setState(() => _isLogin = false),
+                    child: Text('Registro',
+                        style: TextStyle(
+                          color:
+                          !_isLogin ? Colors.white : Colors.white54,
+                          fontSize: 18,
+                        )),
+                  ),
+                  const SizedBox(width: 24),
+                  TextButton(
+                    onPressed: () => setState(() => _isLogin = true),
+                    child: Text('Login',
+                        style: TextStyle(
+                          color:
+                          _isLogin ? Colors.white : Colors.white54,
+                          fontSize: 18,
+                        )),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 32),
+              TextField(
+                controller: _emailCtrl,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  hintText: 'Correo electrónico',
+                  hintStyle: const TextStyle(color: Colors.white54),
+                  filled: true,
+                  fillColor: Colors.white12,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _passCtrl,
+                obscureText: true,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  hintText: 'Contraseña',
+                  hintStyle: const TextStyle(color: Colors.white54),
+                  filled: true,
+                  fillColor: Colors.white12,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+              if (_error != null) ...[
+                const SizedBox(height: 12),
+                Text(_error!, style: const TextStyle(color: Colors.redAccent)),
+              ],
+              const Spacer(),
+              ElevatedButton(
+                onPressed: () => _submit(context),
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(48),
+                ),
+                child:
+                Text(_isLogin ? 'Iniciar sesión' : 'Registrarse'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _submit(BuildContext context) async {
+    final name = _nameCtrl.text.trim();
+    final surname = _surnameCtrl.text.trim();
+    final email = _emailCtrl.text.trim().toLowerCase();
+    final pass = _passCtrl.text.trim();
+
+    User? user;
+
+    if (email.isEmpty || pass.isEmpty) {
+      setState(() => _error = 'Email y contraseña son obligatorios');
+      return;
+    }
+
+    if (_isLogin) {
+      print('Iniciando sesión con email: $email');
+      user = await _db.getUserByEmail(email);
+      if (user == null || user.password != pass) {
+        print('Credenciales incorrectas');
+        setState(() => _error = 'Credenciales incorrectas');
+        return;
+      }
+
+      print('Usuario encontrado, verificando datos incompletos...');
+      if (user.name.isEmpty || user.surname.isEmpty) {
+        print('Datos incompletos. Eliminando usuario...');
+
+        setState(() => _error = 'Registro incompleto. No se puede iniciar sesión.');
+        return;
+      }
+    } else {
+      if (name.isEmpty || surname.isEmpty) {
+        setState(() => _error = 'Nombre y apellido son obligatorios');
+        return;
+      }
+
+      final exists = await _db.getUserByEmail(email);
+      if (exists != null) {
+        setState(() => _error = 'Usuario ya existe');
+        return;
+      }
+
+      print('Insertando nuevo usuario...');
+      try {
+        await _db.insertUser(User(email: email, password: pass, name: name, surname: surname));
+        print('Usuario insertado con éxito');
+      } catch (e) {
+        print('Error al insertar usuario: $e');
+        setState(() => _error = 'Error al registrar usuario. Intente nuevamente.');
+        return;
+      }
+
+      user = await _db.getUserByEmail(email);
+      if (user == null || user.name.isEmpty || user.surname.isEmpty) {
+        print('Registro incompleto. Eliminando usuario...');
+
+        setState(() => _error = 'Registro incompleto. Intente nuevamente.');
+        return;
+      }
+    }
+
+    print("User validado: ${user?.email}, ${user?.name}, ${user?.surname}");
+
+    if (!context.mounted) return;
+    print("Login o registro exitoso, navegando a HomeScreen...");
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => HomeScreen(user: user!)),
+    );
+  }
+}
+
+// =======================
+// HOMESCREEN INTEGRADA
+// =======================
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final User user;
+
+  const HomeScreen({super.key, required this.user});
 
   @override
   _HomeScreenState createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final DatabaseHelper _dbHelper = DatabaseHelper();
-  String _username = 'User';
+  final DBHelper _db = DBHelper();
+  String _username = '';
   double _totalIncome = 0.0;
   double _totalExpenses = 0.0;
-  List<Transaction> _transactions = [];
-  String _selectedMonth = '2025-05';
+  List<TransactionModel> _transactions = [];
   int _monthIndex = 0;
   final List<String> _months = ['2025-05', '2025-06', '2025-07'];
   final List<String> _monthLabels = ['Mayo 2025', 'Junio 2025', 'Julio 2025'];
 
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
   Future<void> _loadData() async {
-    final username = await _dbHelper.getUsername();
-    final totalIncome = await _dbHelper.getTotalIncome(_selectedMonth);
-    final totalExpenses = await _dbHelper.getTotalExpenses(_selectedMonth);
-    final transactions = await _dbHelper.getTransactions(_selectedMonth);
+    final user = widget.user;
+    final month = _months[_monthIndex];
+    final txs = await _db.getTransactionsByMonth(month);
+    final income = txs
+        .where((t) => t.type == 'income')
+        .fold<double>(0, (sum, t) => sum + t.amount);
+    final expense = txs
+        .where((t) => t.type == 'expense')
+        .fold<double>(0, (sum, t) => sum + t.amount);
     setState(() {
-      _username = username;
-      _totalIncome = totalIncome;
-      _totalExpenses = totalExpenses;
-      _transactions = transactions;
+      _username = user?.name ?? 'Usuario';
+      _totalIncome = income;
+      _totalExpenses = expense;
+      _transactions = txs;
     });
   }
 
   void _previousMonth() {
     if (_monthIndex > 0) {
-      setState(() {
-        _monthIndex--;
-        _selectedMonth = _months[_monthIndex];
-        // _loadData(); // Temporarily disabled to use test data
-      });
+      setState(() => _monthIndex--);
+      _loadData();
     }
   }
 
   void _nextMonth() {
     if (_monthIndex < _months.length - 1) {
-      setState(() {
-        _monthIndex++;
-        _selectedMonth = _months[_monthIndex];
-        // _loadData(); // Temporarily disabled to use test data
-      });
+      setState(() => _monthIndex++);
+      _loadData();
     }
   }
 
-  void _agregarTransaccion(Transaction nuevaTransaccion) {
+  void _agregarTransaccion(TransactionModel nueva) async {
+    await _db.insertTransaction(nueva);
+    _loadData();
+  }
+
+  void _eliminarTransaccion(TransactionModel transaccion) {
     setState(() {
-      _transactions.add(nuevaTransaccion);
-      if (nuevaTransaccion.type == 'income') {
-        _totalIncome += nuevaTransaccion.amount;
+      _transactions.remove(transaccion);
+      if (transaccion.type == 'income') {
+        _totalIncome -= transaccion.amount;
       } else {
-        _totalExpenses += nuevaTransaccion.amount;
+        _totalExpenses -= transaccion.amount;
       }
     });
   }
@@ -165,7 +504,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
         ),
-        backgroundColor: Theme.of(context).primaryColor,
+        backgroundColor: const Color(0xFF0C2769),
         elevation: 0,
         centerTitle: true,
       ),
@@ -185,15 +524,17 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   TextButton(
                     onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                            content: Text('Login navigation placeholder')),
+                      Navigator.of(context).pushAndRemoveUntil(
+                        MaterialPageRoute(
+                          builder: (_) => KashFinanceApp(),
+                        ),
+                            (route) => false,
                       );
                     },
                     child: const Text(
-                      'Iniciar Sesión',
+                      'Salir',
                       style: TextStyle(
-                        color: Color(0xFF0C2769),
+                        color: Color(0xFFA61F1F),
                         fontFamily: 'Roboto',
                         fontSize: 16,
                       ),
@@ -205,7 +546,7 @@ class _HomeScreenState extends State<HomeScreen> {
               // Month Selector
               Container(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
                   color: const Color(0xFF0C2769),
                   borderRadius: BorderRadius.circular(12),
@@ -227,8 +568,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                     IconButton(
-                      onPressed:
-                          _monthIndex < _months.length - 1 ? _nextMonth : null,
+                      onPressed: _monthIndex < _months.length - 1 ? _nextMonth : null,
                       icon: const Icon(Icons.arrow_right, color: Colors.white),
                     ),
                   ],
@@ -344,15 +684,17 @@ class _HomeScreenState extends State<HomeScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) =>
-                            BalanceScreen(transactions: _transactions),
+
+                        builder: (context) => BalanceScreen(
+                          transactions: _transactions,
+                          onDelete: _eliminarTransaccion,
+                        ),
                       ),
                     );
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF0C2769),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 24, vertical: 12),
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
@@ -391,15 +733,22 @@ class _HomeScreenState extends State<HomeScreen> {
                           MaterialPageRoute(
                             builder: (context) => RegistroMovimientoForm(
                               tipoMovimiento: 'income',
-                              onSave: _agregarTransaccion,
+                              onSave: (String cat, double amt, DateTime date) {
+                                final nueva = TransactionModel(
+                                  type: 'income',
+                                  category: cat,
+                                  amount: amt,
+                                  date: date,
+                                );
+                                _agregarTransaccion(nueva);
+                              },
                             ),
                           ),
                         );
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF34A853),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 24, vertical: 12),
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
@@ -421,15 +770,22 @@ class _HomeScreenState extends State<HomeScreen> {
                           MaterialPageRoute(
                             builder: (context) => RegistroMovimientoForm(
                               tipoMovimiento: 'expense',
-                              onSave: _agregarTransaccion,
+                              onSave: (String cat, double amt, DateTime date) {
+                                final nueva = TransactionModel(
+                                  type: 'expense',
+                                  category: cat,
+                                  amount: amt,
+                                  date: date,
+                                );
+                                _agregarTransaccion(nueva);
+                              },
                             ),
                           ),
                         );
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFFD91B57),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 24, vertical: 12),
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
@@ -461,20 +817,14 @@ class _HomeScreenState extends State<HomeScreen> {
                     ListView.builder(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
-                      itemCount:
-                          _transactions.length > 5 ? 5 : _transactions.length,
+                      itemCount: _transactions.length > 5 ? 5 : _transactions.length,
                       itemBuilder: (context, index) {
-                        final transaction =
-                            _transactions.reversed.toList()[index];
+                        final transaction = _transactions.reversed.toList()[index];
                         return Card(
                           child: ListTile(
                             leading: Icon(
-                              transaction.type == 'income'
-                                  ? Icons.arrow_upward
-                                  : Icons.arrow_downward,
-                              color: transaction.type == 'income'
-                                  ? Color(0xFF34A853)
-                                  : Color(0xFFD91B57),
+                              transaction.type == 'income' ? Icons.arrow_upward : Icons.arrow_downward,
+                              color: transaction.type == 'income' ? Color(0xFF34A853) : Color(0xFFD91B57),
                               size: 20,
                             ),
                             title: Text(
@@ -486,7 +836,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               style: const TextStyle(fontFamily: 'Roboto'),
                             ),
                             trailing: Text(
-                              transaction.date,
+                              DateFormat('yyyy-MM-dd').format(transaction.date),
                               style: const TextStyle(fontFamily: 'Roboto'),
                             ),
                           ),
@@ -504,15 +854,22 @@ class _HomeScreenState extends State<HomeScreen> {
                               MaterialPageRoute(
                                 builder: (context) => RegistroMovimientoForm(
                                   tipoMovimiento: 'income',
-                                  onSave: _agregarTransaccion,
+                                  onSave: (String cat, double amt, DateTime date) {
+                                    final nueva = TransactionModel(
+                                      type: 'income',
+                                      category: cat,
+                                      amount: amt,
+                                      date: date,
+                                    );
+                                    _agregarTransaccion(nueva);
+                                  },
                                 ),
                               ),
                             );
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF34A853),
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 24, vertical: 12),
+                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8),
                             ),
@@ -534,15 +891,22 @@ class _HomeScreenState extends State<HomeScreen> {
                               MaterialPageRoute(
                                 builder: (context) => RegistroMovimientoForm(
                                   tipoMovimiento: 'expense',
-                                  onSave: _agregarTransaccion,
+                                  onSave: (String cat, double amt, DateTime date) {
+                                    final nueva = TransactionModel(
+                                      type: 'expense',
+                                      category: cat,
+                                      amount: amt,
+                                      date: date,
+                                    );
+                                    _agregarTransaccion(nueva);
+                                  },
                                 ),
                               ),
                             );
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFFD91B57),
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 24, vertical: 12),
+                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8),
                             ),
