@@ -163,6 +163,16 @@ class DBHelper {
     return db.insert('transactions', t.toMap());
   }
 
+  Future<int> deleteTransaction(int id) async {
+    final db = await database;
+    return db.delete(
+      'transactions',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+
   Future<List<TransactionModel>> getTransactionsByMonth(
       String month) async {
     final db = await database;
@@ -464,7 +474,12 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadData();
   }
 
-  void _eliminarTransaccion(TransactionModel transaccion) {
+  void _eliminarTransaccion(TransactionModel transaccion) async  {
+
+    if (transaccion.id != null) {
+      await DBHelper().deleteTransaction(transaccion.id!);
+    }
+
     setState(() {
       _transactions.remove(transaccion);
       if (transaccion.type == 'income') {
