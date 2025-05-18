@@ -172,6 +172,17 @@ class DBHelper {
     );
   }
 
+  Future<int> updateTransaction(TransactionModel t) async {
+    final db = await database;
+    return db.update(
+      'transactions',
+      t.toMap(),
+      where: 'id = ?',
+      whereArgs: [t.id],
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
 
   Future<List<TransactionModel>> getTransactionsByMonth(
       String month) async {
@@ -428,8 +439,8 @@ class _HomeScreenState extends State<HomeScreen> {
   double _totalExpenses = 0.0;
   List<TransactionModel> _transactions = [];
   int _monthIndex = 0;
-  final List<String> _months = ['2025-05', '2025-06', '2025-07'];
-  final List<String> _monthLabels = ['Mayo 2025', 'Junio 2025', 'Julio 2025'];
+  final List<String> _months = ['2025-05', '2025-06', '2025-07','2025-08', '2025-09', '2025-10', '2025-11', '2025-12'];
+  final List<String> _monthLabels = ['Mayo 2025', 'Junio 2025', 'Julio 2025','Agosto 2025', 'Septiembre 2025', 'Octubre 2025', 'Noviembre 2025', 'Diciembre 2025'];
 
   @override
   void initState() {
@@ -469,6 +480,11 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  void _handleUpdate(TransactionModel t) async {
+    await DBHelper().updateTransaction(t);
+    _loadData();
+  }
+
   void _agregarTransaccion(TransactionModel nueva) async {
     await _db.insertTransaction(nueva);
     _loadData();
@@ -489,6 +505,7 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     });
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -703,6 +720,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         builder: (context) => BalanceScreen(
                           transactions: _transactions,
                           onDelete: _eliminarTransaccion,
+                          onUpdate: _handleUpdate,
                         ),
                       ),
                     );

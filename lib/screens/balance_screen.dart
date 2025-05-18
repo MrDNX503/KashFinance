@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../main.dart';
+import 'registro_movimiento_form.dart';
 
 class BalanceScreen extends StatefulWidget {
   final List<TransactionModel> transactions;
   final Function(TransactionModel) onDelete;
+  final Function(TransactionModel) onUpdate;
 
-  const BalanceScreen({super.key, required this.transactions, required this.onDelete});
+  const BalanceScreen({super.key, required this.transactions, required this.onDelete, required this.onUpdate,});
 
   @override
   _BalanceScreenState createState() => _BalanceScreenState();
@@ -143,12 +145,45 @@ class _BalanceScreenState extends State<BalanceScreen> {
                             fontSize: 14,
                           ),
                         ),
-                        trailing: Text(
-                          fechaStr,
-                          style: const TextStyle(
-                            fontFamily: 'Roboto',
-                            fontSize: 14,
-                          ),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                            children: [
+                            Text(fechaStr),
+                              const SizedBox(width: 8),
+                              IconButton(
+                                icon: const Icon(Icons.edit, color: Colors.blue),
+                                onPressed: () async {
+                                  await Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          RegistroMovimientoForm(
+                                            tipoMovimiento:
+                                            transaction.type,
+                                            initialCategory:
+                                            transaction.category,
+                                            initialAmount:
+                                            transaction.amount,
+                                            initialDate:
+                                            transaction.date,
+                                            onSave: (newCat, newAmt,
+                                                newDate) async {
+                                              final updated = TransactionModel(
+                                                id: transaction.id,
+                                                type: transaction.type,
+                                                category: newCat,
+                                                amount: newAmt,
+                                                date: newDate,
+                                              );
+                                          await DBHelper().updateTransaction(updated);
+                                          widget.onUpdate(updated);
+                                        },
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                          ],
                         ),
                       ),
                     ),

@@ -7,10 +7,17 @@ class RegistroMovimientoForm extends StatefulWidget {
   final void Function(String category, double amount, DateTime date) onSave;
   // Callback para agregar el movimiento
 
+  final String? initialCategory;
+  final double? initialAmount;
+  final DateTime? initialDate;
+
   const RegistroMovimientoForm({
     super.key,
     required this.tipoMovimiento,
     required this.onSave,
+    this.initialCategory,
+    this.initialAmount,
+    this.initialDate,
   });
 
   @override
@@ -21,7 +28,7 @@ class _RegistroMovimientoFormState extends State<RegistroMovimientoForm> {
   String? _categoriaSeleccionada;
   final TextEditingController _montoController = TextEditingController();
   final TextEditingController _fechaController = TextEditingController();
-  DateTime _fechaSeleccionada = DateTime.now();
+  late DateTime _fechaSeleccionada = DateTime.now();
 
   // Lista de categorías para el Dropdown
   static const _incomeCategories = [
@@ -42,7 +49,15 @@ class _RegistroMovimientoFormState extends State<RegistroMovimientoForm> {
   @override
   void initState() {
     super.initState();
+    _fechaSeleccionada = widget.initialDate ?? DateTime.now();
     _fechaController.text = DateFormat('yyyy-MM-dd').format(_fechaSeleccionada);
+
+    if (widget.initialCategory != null) {
+      _categoriaSeleccionada = widget.initialCategory;
+    }
+    if (widget.initialAmount != null) {
+      _montoController.text = widget.initialAmount.toString();
+    }
   }
 
   @override
@@ -50,6 +65,29 @@ class _RegistroMovimientoFormState extends State<RegistroMovimientoForm> {
     _montoController.dispose();
     _fechaController.dispose();
     super.dispose();
+  }
+
+  void _onSavePressed() {
+    if (_categoriaSeleccionada == null || _montoController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Por favor completa todos los campos')),
+      );
+      return;
+    }
+    final monto = double.tryParse(_montoController.text);
+    if (monto == null || monto <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Por favor ingresa un monto válido')),
+      );
+      return;
+    }
+
+    widget.onSave(
+      _categoriaSeleccionada!,
+      monto,
+      _fechaSeleccionada,
+    );
+    Navigator.pop(context);
   }
 
   @override
